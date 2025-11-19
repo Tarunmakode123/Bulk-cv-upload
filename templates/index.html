@@ -10,6 +10,8 @@
   
   <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <!-- Site styles -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
   
   <!-- Marked.js for rendering Markdown -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -55,16 +57,97 @@
     #markdown-result ul {
       padding-left: 1.2rem;
     }
+    /* make tables more clearly bordered */
+    table.table-bordered {
+      border: 1px solid #dee2e6;
+      border-collapse: collapse;
+    }
+    table.table-bordered th,
+    table.table-bordered td {
+      border: 1.6px solid #bfbfbf; /* slightly bolder */
+    }
+
+    /* Global theme / hero styles */
+    body {
+      background: linear-gradient(90deg,#f3f7ff 0%, #f9fbf7 50%, #fffaf0 100%);
+    }
+    .site-navbar {
+      background: rgba(255,255,255,0.9);
+      box-shadow: 0 2px 8px rgba(15,23,42,0.06);
+      border-bottom: 1px solid rgba(0,0,0,0.04);
+    }
+    .hero {
+      background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(16,185,129,0.03));
+      padding: 56px 0;
+      margin-bottom: 24px;
+    }
+    .hero .hero-title {
+      font-size: 38px;
+      line-height: 1.05;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: #0f172a;
+    }
+    .hero .hero-sub {
+      color: #475569;
+      margin-bottom: 20px;
+      max-width: 640px;
+    }
+    .btn-cta {
+      background: linear-gradient(90deg,#4f46e5,#06b6d4);
+      border: none;
+      color: #fff;
+      padding: 10px 18px;
+      box-shadow: 0 6px 20px rgba(79,70,229,0.12);
+    }
+    .btn-outline-cta {
+      border: 1px solid rgba(15,23,42,0.08);
+      color: #0f172a;
+      background: #fff;
+    }
+
+    /* Results card polish */
+    .results-card {
+      border-radius: 12px;
+      box-shadow: 0 6px 24px rgba(15,23,42,0.06);
+      padding: 20px;
+      border: none;
+    }
+    .score-bar {
+      height: 8px;
+      border-radius: 6px;
+      background: #e6eef9;
+      overflow: hidden;
+    }
+    .score-bar > span {
+      display: block;
+      height: 100%;
+      background: linear-gradient(90deg,#06b6d4,#4f46e5);
+    }
   </style>
 </head>
 <body>
 
-  <!-- Navbar -->
-  <nav class="navbar navbar-expand-lg">
+  {% include '_header.html' %}
+
+  <!-- Hero -->
+  <section class="hero">
     <div class="container">
-      <a class="navbar-brand" href="#">Resume Analyzer AI</a>
+      <div class="row align-items-center">
+        <div class="col-md-7">
+          <h1 class="hero-title">Your AI-Powered Resume Analyzer</h1>
+          <p class="hero-sub">Transform your hiring process with fast resume analysis, prioritized shortlists, and actionable insights — powered by AI.</p>
+          <div class="d-flex gap-2">
+            <button class="btn btn-cta">Start Your Journey</button>
+            <button class="btn btn-outline-cta">Product Intro</button>
+          </div>
+        </div>
+        <div class="col-md-5 text-center">
+          <img src="https://via.placeholder.com/520x320.png?text=Hero+Image" class="img-fluid rounded" alt="hero">
+        </div>
+      </div>
     </div>
-  </nav>
+  </section>
 
   <!-- Main Content -->
   <div class="container">
@@ -72,10 +155,26 @@
       <div class="col-md-8">
         <div class="card p-4">
           <h3 class="mb-4 text-center">Analyze Your Resume with AI</h3>
+          <!-- Server-side error messages (e.g. too many files) -->
+          {% if error %}
+          <div class="alert alert-danger" role="alert">{{ error }}</div>
+          {% endif %}
+
           <form id="analyzeForm" method="post" enctype="multipart/form-data">
             <div class="mb-3">
-              <label class="form-label">Upload Resume (PDF only)</label>
-              <input class="form-control" type="file" name="resume" accept=".pdf" required>
+              <label class="form-label">Upload Resumes (PDF only)</label>
+              <div class="d-flex gap-2 align-items-start file-controls">
+                <input id="fileInput" class="form-control" type="file" accept=".pdf" multiple>
+                <!-- Hidden folder input (webkitdirectory) to allow selecting a folder of files -->
+                <input id="folderInput" type="file" webkitdirectory directory multiple style="display:none">
+                <button id="selectFolderBtn" type="button" class="btn btn-outline-primary">Select Folder</button>
+                <button id="addFilesBtn" type="button" class="btn btn-outline-primary">Add</button>
+                <button id="clearFilesBtn" type="button" class="btn btn-outline-secondary">Clear</button>
+              </div>
+              <small class="text-muted">Select one or more PDF resumes (up to 50). Use the native chooser to pick files, then click Add to include them in the list. You can add more batches before submitting.</small>
+
+              <!-- Selected files preview -->
+              <ul id="selectedFilesList" class="list-group mt-2" style="max-height:220px; overflow:auto;"></ul>
             </div>
             <div class="mb-3">
               <label class="form-label">Paste Job Description</label>
@@ -98,17 +197,84 @@
         {% if result %}
         <div class="card mt-4 p-4">
           <h4>Analysis Result</h4>
-          <div id="markdown-result"></div>
+          <div class="mb-2">
+            <button id="downloadJsonBtn" class="btn btn-sm btn-outline-primary">Download JSON</button>
+            <button id="downloadCsvBtn" class="btn btn-sm btn-outline-secondary">Download CSV</button>
+            <button id="rerunAllBtn" class="btn btn-sm btn-outline-warning">Re-run All</button>
+          </div>
+          <!-- serialized results for downloads and reruns -->
+          <script id="resultsJson" type="application/json">{{ result|tojson }}</script>
+          <!-- KPIs shown once at the top -->
+          <div class="mb-3">
+            <strong>KPIs (basis of scoring):</strong>
+            <ul>
+              {% for k in kpis %}
+                <li>{{ k }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+           {% for category, items in result.items() %}
+           <div class="mt-3">
+             <h5>{{ category }} ({{ items|length }})</h5>
+             <!-- per-category header -->
+             {% if items|length == 0 %}
+               <p class="text-muted">No resumes in this category.</p>
+             {% else %}
+               <div class="table-responsive">
+                 <table class="table table-striped table-bordered table-sm">
+                   <thead>
+                     <tr>
+                       <th scope="col">Resume Name</th>
+                       <th scope="col">Score</th>
+                     </tr>
+                   </thead>
+                   <tbody>
+                   {% for item in items %}
+                     <tr>
+                       <td>
+                         <div class="d-flex align-items-center justify-content-between">
+                           <div><strong>{{ item.filename }}</strong></div>
+                           <div>
+                             <!-- per-resume rerun button -->
+                             <button type="button" class="btn btn-sm btn-outline-secondary rerun-btn" data-filename="{{ item.filename|e }}">Re-run</button>
+                           </div>
+                         </div>
+                         <div class="mt-2">
+                           <details>
+                             <summary>View analysis</summary>
+                             <pre style="white-space:pre-wrap;">{{ item.analysis }}</pre>
+                           </details>
+                         </div>
+                         <!-- include extracted resume text hidden so client can request rerun without re-upload -->
+                         <textarea class="d-none resume-text">{{ item.resume_text }}</textarea>
+                       </td>
+                       <td>
+                         {% if item.score is not none %}
+                           <div class="d-flex flex-column">
+                             <div><strong class="score-text">{{ item.score }}/100</strong></div>
+                             <div class="score-bar mt-2" aria-hidden="true">
+                               <span data-score="{{ item.score }}"></span>
+                             </div>
+                           </div>
+                         {% else %}
+                           <span class="text-muted">N/A</span>
+                         {% endif %}
+                       </td>
+                     </tr>
+                   {% endfor %}
+                   </tbody>
+                 </table>
+               </div>
+             {% endif %}
+           </div>
+           {% endfor %}
         </div>
         {% endif %}
       </div>
     </div>
   </div>
 
-  <!-- Footer -->
-  <div class="footer">
-    &copy; {{ year or "2025" }} Resume Analyzer AI &middot; Built with ❤️ by Kumaresan
-  </div>
+  {% include '_footer.html' %}
 
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -117,17 +283,274 @@
   <script>
     const form = document.getElementById("analyzeForm");
     const spinner = document.getElementById("spinner");
-    form.addEventListener("submit", function () {
-      spinner.style.display = "block";
-    });
+    // spinner shown when submission happens (used by fetch submit below as well)
+    function showSpinner() { spinner.style.display = 'block'; }
+    function hideSpinner() { spinner.style.display = 'none'; }
+  </script>
+  <!-- Incremental file manager + reliable submit via FormData -->
+  <script>
+    (function () {
+      const MAX_FILES = 50; // must match server MAX_FILES_PER_REQUEST
+      const fileInput = document.getElementById('fileInput');
+  const folderInput = document.getElementById('folderInput');
+  const selectFolderBtn = document.getElementById('selectFolderBtn');
+      const addFilesBtn = document.getElementById('addFilesBtn');
+      const clearFilesBtn = document.getElementById('clearFilesBtn');
+      const selectedFilesList = document.getElementById('selectedFilesList');
+      const jdElem = document.querySelector('textarea[name="job_description"]');
+      let selectedFiles = []; // array of File objects
+
+      function render() {
+        selectedFilesList.innerHTML = '';
+        selectedFiles.forEach((f, idx) => {
+          const li = document.createElement('li');
+          li.className = 'list-group-item d-flex justify-content-between align-items-start';
+          li.innerHTML = `<div><strong>${f.name}</strong> <small class="text-muted">(${Math.round(f.size/1024)} KB)</small></div>`;
+          const rm = document.createElement('button');
+          rm.type = 'button';
+          rm.className = 'btn btn-sm btn-outline-danger';
+          rm.textContent = 'Remove';
+          rm.addEventListener('click', () => {
+            selectedFiles.splice(idx, 1);
+            render();
+          });
+          li.appendChild(rm);
+          selectedFilesList.appendChild(li);
+        });
+      }
+
+      // When Add is clicked, open the native file chooser
+      addFilesBtn.addEventListener('click', () => {
+        fileInput.click();
+      });
+
+      // When Select Folder is clicked, open a folder chooser (hidden input with webkitdirectory)
+      selectFolderBtn.addEventListener('click', () => {
+        folderInput.click();
+      });
+
+      // When files are selected in the file chooser, add them automatically
+      fileInput.addEventListener('change', (e) => {
+        const files = Array.from(e.target.files || []);
+        for (const f of files) {
+          if (!f.name.toLowerCase().endsWith('.pdf')) continue;
+          const exists = selectedFiles.some(sf => sf.name === f.name && sf.size === f.size);
+          if (!exists) selectedFiles.push(f);
+          if (selectedFiles.length >= MAX_FILES) break;
+        }
+        render();
+        // clear native input so same file can be reselected if needed
+        fileInput.value = '';
+      });
+
+      // Folder input: add all PDF files found inside the selected directory (recursively where supported)
+      folderInput.addEventListener('change', (e) => {
+        const files = Array.from(e.target.files || []);
+        for (const f of files) {
+          if (!f.name.toLowerCase().endsWith('.pdf')) continue;
+          const exists = selectedFiles.some(sf => sf.name === f.name && sf.size === f.size);
+          if (!exists) selectedFiles.push(f);
+          if (selectedFiles.length >= MAX_FILES) break;
+        }
+        render();
+        folderInput.value = '';
+      });
+
+      clearFilesBtn.addEventListener('click', () => {
+        selectedFiles = [];
+        render();
+      });
+
+      // Intercept form submit: build FormData from selectedFiles and JD, POST via fetch
+      form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        // validation
+        if (selectedFiles.length === 0) {
+          alert('Please add at least one PDF resume before submitting.');
+          return;
+        }
+        if (!jdElem || !jdElem.value.trim()) {
+          alert('Please paste the job description before submitting.');
+          return;
+        }
+        if (selectedFiles.length > MAX_FILES) {
+          alert(`Please upload at most ${MAX_FILES} resumes per attempt.`);
+          return;
+        }
+
+        try {
+          showSpinner();
+          const fd = new FormData();
+          for (const f of selectedFiles) fd.append('resumes', f, f.name);
+          fd.append('job_description', jdElem.value);
+
+          const resp = await fetch(window.location.pathname, { method: 'POST', body: fd, credentials: 'same-origin' });
+          const text = await resp.text();
+          // replace page with server HTML response
+          document.open();
+          document.write(text);
+          document.close();
+        } catch (err) {
+          console.error('Submit failed', err);
+          alert('Submission failed: ' + (err && err.message ? err.message : err));
+          hideSpinner();
+        }
+      });
+
+      // initial render
+      render();
+    })();
   </script>
 
-  <!-- Render Markdown -->
-  {% if result %}
+  <!-- Render Markdown: no client-side markdown parsing needed for categorized results -->
   <script>
-    const markdown = {{ result | tojson | safe }};
-    document.getElementById("markdown-result").innerHTML = marked.parse(markdown);
+    // Actions on results page: download JSON/CSV, rerun single resume, rerun all
+    (function () {
+  const resultsInput = document.getElementById('resultsJson');
+      const jdElem = document.querySelector('textarea[name="job_description"]');
+
+      function downloadFromResponse(resp, filename, mime) {
+        return resp.blob().then(blob => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        });
+      }
+
+      const downloadJsonBtn = document.getElementById('downloadJsonBtn');
+      const downloadCsvBtn = document.getElementById('downloadCsvBtn');
+      const rerunAllBtn = document.getElementById('rerunAllBtn');
+
+      if (downloadJsonBtn) {
+        downloadJsonBtn.addEventListener('click', async () => {
+          let payload = {};
+          try { payload = JSON.parse(resultsInput.textContent); } catch (e) { alert('Failed to read results'); return }
+          const resp = await fetch('/download/json', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+          if (!resp.ok) { alert('Download failed'); return }
+          await downloadFromResponse(resp, 'results.json', 'application/json');
+        });
+      }
+
+      if (downloadCsvBtn) {
+        downloadCsvBtn.addEventListener('click', async () => {
+          let payload = {};
+          try { payload = JSON.parse(resultsInput.textContent); } catch (e) { alert('Failed to read results'); return }
+          const resp = await fetch('/download/csv', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+          if (!resp.ok) { alert('Download failed'); return }
+          await downloadFromResponse(resp, 'results.csv', 'text/csv');
+        });
+      }
+
+      // Delegate rerun button clicks (works with table rows)
+      document.addEventListener('click', async (e) => {
+        const btn = e.target.closest('.rerun-btn');
+        if (!btn) return;
+        // find containing table row or list item
+        const row = btn.closest('tr') || btn.closest('li');
+        const resumeTextArea = row ? row.querySelector('.resume-text') : null;
+        const pre = row ? row.querySelector('pre') : null;
+        const scoreSpan = row ? row.querySelector('.score-text') : null;
+        const filename = btn.getAttribute('data-filename') || (row ? row.querySelector('strong')?.textContent : 'resume');
+
+        const resume_text = resumeTextArea ? resumeTextArea.value : '';
+        if (!resume_text) { alert('No resume text available to re-run'); return }
+
+        // optionally override JD
+        let jd_override = prompt('Enter job description to use for this re-run (leave blank to use current JD)');
+        const jd = (jd_override !== null && jd_override.trim() !== '') ? jd_override : (jdElem ? jdElem.value : '');
+
+        try {
+          btn.disabled = true;
+          btn.textContent = 'Running...';
+          const resp = await fetch('/rerun', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ resume_text, job_description: jd }) });
+          if (!resp.ok) {
+            const err = await resp.json().catch(()=>({error:'unknown'}));
+            alert('Rerun failed: ' + (err.error || resp.statusText));
+            return;
+          }
+          const data = await resp.json();
+          if (pre) pre.textContent = data.analysis || '';
+          if (scoreSpan) scoreSpan.textContent = data.score !== null && data.score !== undefined ? `${data.score}/100` : 'N/A';
+          // update score bar width if present
+          const bar = row ? row.querySelector('.score-bar span[data-score]') : null;
+          if (bar) {
+            const v = (data.score !== null && data.score !== undefined) ? parseInt(data.score,10) : 0;
+            bar.setAttribute('data-score', v);
+            bar.style.width = (isNaN(v) ? 0 : Math.max(0, Math.min(100, v))) + '%';
+          }
+        } catch (err) {
+          console.error(err);
+          alert('Rerun failed: ' + (err && err.message ? err.message : err));
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Re-run';
+        }
+      });
+
+      // Re-run all: collects all resume_text entries and posts to /rerun_all
+      if (rerunAllBtn) {
+        rerunAllBtn.addEventListener('click', async () => {
+          if (!confirm('Re-run analysis for all resumes shown? This will call the analysis API for each resume.')) return;
+          const jd_override = prompt('Enter job description to use for this re-run all (leave blank to use current JD)');
+          const jd = (jd_override !== null && jd_override.trim() !== '') ? jd_override : (jdElem ? jdElem.value : '');
+          const payload = { resumes: [], job_description: jd };
+          // collect all resume_text areas shown in results (table rows)
+          document.querySelectorAll('textarea.resume-text').forEach(el => {
+            // find filename from same row if possible
+            const row = el.closest('tr');
+            const filename = (row && row.querySelector('strong')) ? row.querySelector('strong').textContent : (el.getAttribute('data-filename') || 'resume');
+            const resume_text = el.value || '';
+            if (resume_text) payload.resumes.push({ filename, resume_text });
+          });
+          if (payload.resumes.length === 0) { alert('No resumes to re-run'); return }
+
+          try {
+            rerunAllBtn.disabled = true;
+            rerunAllBtn.textContent = 'Running...';
+            const resp = await fetch('/rerun_all', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+            if (!resp.ok) { alert('Rerun all failed'); return }
+            const data = await resp.json();
+            // update UI per result (match by filename in result rows)
+            data.results.forEach(res => {
+              const row = Array.from(document.querySelectorAll('table tbody tr')).find(tr => (tr.querySelector('strong')?.textContent || '') === res.filename);
+              if (!row) return;
+              const pre = row.querySelector('pre');
+              const scoreSpan = row.querySelector('.score-text');
+              const bar = row.querySelector('.score-bar span[data-score]');
+              if (pre) pre.textContent = res.analysis || '';
+              if (scoreSpan) scoreSpan.textContent = res.score !== null && res.score !== undefined ? `${res.score}/100` : 'N/A';
+              if (bar) {
+                const v = (res.score !== null && res.score !== undefined) ? parseInt(res.score,10) : 0;
+                bar.setAttribute('data-score', v);
+                bar.style.width = (isNaN(v) ? 0 : Math.max(0, Math.min(100, v))) + '%';
+              }
+            });
+          } catch (err) {
+            console.error(err);
+            alert('Rerun all failed: ' + (err.message || err));
+          } finally {
+            rerunAllBtn.disabled = false;
+            rerunAllBtn.textContent = 'Re-run All';
+          }
+        });
+      }
+    })();
   </script>
-  {% endif %}
+  <script>
+    // set score bar widths from data-score attributes
+    (function(){
+      document.querySelectorAll('.score-bar span[data-score]').forEach(function(el){
+        var v = parseInt(el.getAttribute('data-score') || '0', 10);
+        if (isNaN(v)) v = 0;
+        if (v < 0) v = 0; if (v > 100) v = 100;
+        el.style.width = v + '%';
+      });
+    })();
+  </script>
 </body>
 </html>

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36" role="img" aria-label="Resume Analyzer logo">
+  <defs>
+    <linearGradient id="g" x1="0" x2="1">
+      <stop offset="0%" stop-color="#4f46e5" />
+      <stop offset="100%" stop-color="#06b6d4" />
+    </linearGradient>
+  </defs>
+  <rect width="36" height="36" rx="8" ry="8" fill="#fff" />
+  <rect x="2" y="2" width="32" height="32" rx="7" ry="7" fill="url(#g)" />
+  <text x="50%" y="52%" font-family="Poppins, Arial, sans-serif" font-weight="700" font-size="18" fill="white" text-anchor="middle" alignment-baseline="middle">R</text>
+</svg>

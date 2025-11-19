@@ -1,0 +1,105 @@
+/* Colorful shared site styles */
+:root{
+  --bg-1: #0f172a;      /* deep navy */
+  --accent-1: #4f46e5;  /* indigo */
+  --accent-2: #06b6d4;  /* teal */
+  --muted: #6b7280;
+  --card-bg: #ffffff;
+  --surface: #f7fbff;
+  --positive: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+}
+
+/* Page background and base font */
+body {
+  background: linear-gradient(90deg, #f3f7ff 0%, #fffaf0 100%);
+  color: #0f172a;
+  -webkit-font-smoothing:antialiased;
+}
+
+.site-navbar {
+  background: linear-gradient(90deg, rgba(79,70,229,0.95), rgba(6,182,212,0.95));
+  color: #fff;
+  box-shadow: 0 6px 30px rgba(15,23,42,0.12);
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+.site-navbar a.navbar-brand { color: #fff; text-decoration: none }
+.site-navbar .brand-logo { height:36px; width:36px; object-fit:cover; margin-right:10px; border-radius:6px; border:2px solid rgba(255,255,255,0.12) }
+.site-navbar .brand-title { font-weight:700; color: #fff; }
+.site-navbar .brand-sub { font-size:12px; color: rgba(255,255,255,0.9); }
+.site-navbar .btn { border-radius:8px }
+
+/* Primary CTA */
+.btn-primary, .btn-cta {
+  background: linear-gradient(90deg,var(--accent-1),var(--accent-2));
+  border: none;
+  color: #fff;
+  padding: 8px 14px;
+  box-shadow: 0 8px 30px rgba(79,70,229,0.12);
+}
+.btn-outline-primary {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.18);
+  color: #fff;
+}
+
+/* Hero and cards */
+.hero { background: linear-gradient(135deg, rgba(79,70,229,0.08), rgba(6,182,212,0.04)); padding:56px 0; margin-bottom:24px }
+.hero .hero-title { color: var(--bg-1); }
+.card { background: var(--card-bg); border-radius:12px; box-shadow: 0 8px 30px rgba(15,23,42,0.06); }
+.results-card { padding:20px; border-radius:12px }
+
+/* Footer */
+.site-footer { padding:20px 0; text-align:center; color: #fff; background: linear-gradient(90deg, rgba(79,70,229,0.95), rgba(6,182,212,0.95)); margin-top:40px }
+
+/* Lists and file preview */
+.list-group-item { transition: background .12s ease, transform .08s; }
+.list-group-item:hover { background: rgba(79,70,229,0.03); transform: translateY(-1px) }
+
+/* Score bar */
+.score-bar { height:8px; border-radius:6px; background: rgba(15,23,42,0.06); overflow:hidden }
+.score-bar > span { display:block; height:100%; background: linear-gradient(90deg,var(--accent-2),var(--accent-1)); width:0 }
+
+/* Table header accent */
+table.table thead th { background: linear-gradient(90deg, rgba(79,70,229,0.06), rgba(6,182,212,0.02)); }
+
+/* Small responsive tweaks */
+@media (max-width: 768px) {
+  .site-navbar .d-flex.ms-auto { gap: 8px; }
+}
+
+/* Utility */
+.text-muted-contrast { color: rgba(15,23,42,0.6) }
+
+/* Ensure brand text is visible even if navbar background is light (override inline styles) */
+.site-navbar .brand-text .brand-title {
+  color: #0f172a !important; /* deep navy for contrast */
+  font-size: 18px;
+  margin-right: 6px;
+}
+.site-navbar .brand-text .brand-sub {
+  color: rgba(15,23,42,0.6) !important;
+  font-size: 12px;
+  margin-top: 2px;
+}
+.site-navbar .navbar-brand { padding-left: 8px; }
+
+/* File upload control sizing so buttons align with the file input */
+.file-controls { align-items: center; }
+.file-controls .form-control[type=file] { height: calc(2.4rem); }
+.file-controls .btn { min-width: 92px; height: calc(2.4rem); padding: 0 .9rem; display: inline-flex; align-items: center; justify-content: center; border-radius:6px }
+.file-controls .btn.btn-outline-secondary { min-width: 84px }
+.file-controls #selectFolderBtn { min-width: 140px; white-space: nowrap; }
+.file-controls .btn:focus { box-shadow: 0 0 0 0.2rem rgba(79,70,229,0.12); }
+
+/* Make file-control buttons visible on white cards: use dark text and subtle border */
+.file-controls .btn {
+  background: #fff !important;
+  color: var(--bg-1) !important;
+  border: 1px solid rgba(15,23,42,0.08) !important;
+}
+.file-controls .btn.btn-outline-primary {
+  background: #fff !important;
+}
+
