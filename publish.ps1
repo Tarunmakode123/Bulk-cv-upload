@@ -36,7 +36,6 @@ git add .
 git commit -m "Initial commit: Resume Analyzer" 2>$null
 
 $remoteUrlHttps = "https://github.com/$Owner/$RepoName.git"
-$remoteUrlSsh = "git@github.com:$Owner/$RepoName.git"
 
 if (Get-Command gh -ErrorAction SilentlyContinue) {
   Write-Host "gh CLI found — creating repo via GitHub CLI (you may be prompted to authenticate)."
